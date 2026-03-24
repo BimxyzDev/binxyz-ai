@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Bimxyz AI · Smart Memory</title>
+<style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0c10;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        .app {
+            width: 100%;
+            max-width: 1100px;
+            height: 90vh;
+            background: #0f1117;
+            border-radius: 28px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #1e2028;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+            color: white;
+        }
+
+        .brand h1 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: white;
+            letter-spacing: -0.3px;
+        }
+
+        .brand p {
+            font-size: 0.65rem;
+            color: #6c727f;
+            margin-top: 2px;
+        }
+
+        .chip {
+            background: #1a1d24;
+            padding: 5px 12px;
+            border-radius: 40px;
+            font-size: 0.65rem;
+            color: #10b981;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .memory-indicator {
+            background: #1a1d24;
+            padding: 5px 10px;
+            border-radius: 30px;
+            font-size: 0.6rem;
+            color: #8b9b7a;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            min-height: 0;
+        }
+
+        .messages::-webkit-scrollbar {
+            width: 5px;
+        }
+        .messages::-webkit-scrollbar-track {
+            background: #1a1d24;
+            border-radius: 10px;
+        }
+        .messages::-webkit-scrollbar-thumb {
+            background: #2d313a;
+            border-radius: 10px;
+        }
+
+        .message {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.ai {
+            justify-content: flex-start;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: #1a1d24;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .message.user .avatar {
+            background: #10b981;
+            color: white;
+        }
+
+        .message.ai .avatar {
+            background: #1e2129;
+            color: #10b981;
+        }
+
+        .bubble {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            color: #eef2ff;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .message.user .bubble {
+            background: #10b981;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.ai .bubble {
+            background: #14171c;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #252a33;
+        }
+
+        .timestamp {
+            font-size: 0.55rem;
+            color: #5a6070;
+            margin-top: 4px;
+        }
+
+        .code-wrapper {
+            margin: 8px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #0a0c10;
+            border: 1px solid #252a33;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
+            background: #0f1117;
+            border-bottom: 1px solid #252a33;
+            font-size: 0.65rem;
+        }
+
+        .code-lang {
+            color: #10b981;
+            font-weight: 500;
+            font-family: monospace;
+            text-transform: lowercase;
+        }
+
+        .code-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .code-buttons button {
+            background: transparent;
+            border: none;
+            color: #6c727f;
+            font-size: 0.65rem;
+            cursor: pointer;
+            padding: 3px 8px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-family: inherit;
+        }
+
+        .code-buttons button:hover {
+            background: #252a33;
+            color: #eef2ff;
+        }
+
+        .code-wrapper pre {
+            margin: 0;
+            padding: 12px;
+            overflow-x: auto;
+            background: #0a0c10;
+        }
+
+        .code-wrapper code {
+            font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            line-height: 1.45;
+            color: #eef2ff;
+            white-space: pre;
+        }
+
+        .inline-code {
+            background: #1a1d24;
+            padding: 2px 5px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.8em;
+            color: #10b981;
+        }
+        
+        .input-area {
+            padding: 8px 20px 12px;
+            border-top: 1px solid #1e2028;
+            flex-shrink: 0;
+            background: #0f1117;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 8px;
+            background: #1a1d24;
+            border-radius: 28px;
+            padding: 3px 5px 3px 16px;
+            border: 1px solid #2a2f38;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #10b981;
+        }
+
+        textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 0.85rem;
+            padding: 8px 0;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+            max-height: 80px;
+        }
+
+        textarea::placeholder {
+            color: #4a4f5e;
+        }
+
+        .send-btn {
+            background: #10b981;
+            border: none;
+            width: 34px;
+            height: 34px;
+            border-radius: 30px;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background: #059669;
+            transform: scale(0.96);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 6px;
+            font-size: 0.55rem;
+            color: #4a4f5e;
+        }
+
+        .memory-panel {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            background: #1a1d24;
+            border-radius: 14px;
+            padding: 10px;
+            width: 250px;
+            border: 1px solid #2a2f38;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .memory-panel.show {
+            display: block;
+        }
+
+        .memory-panel h4 {
+            color: #10b981;
+            font-size: 0.7rem;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .memory-panel button {
+            background: #252a33;
+            border: none;
+            color: #eef2ff;
+            padding: 3px 7px;
+            border-radius: 6px;
+            font-size: 0.6rem;
+            cursor: pointer;
+        }
+
+        .memory-list {
+            max-height: 180px;
+            overflow-y: auto;
+            font-size: 0.65rem;
+            color: #9aa4b0;
+        }
+
+        .memory-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #252a33;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+            padding: 4px 0;
+        }
+        .typing-dots span {
+            width: 6px;
+            height: 6px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 1.2s infinite;
+        }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes pulse {
+            0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+            30% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .clear-btn {
+            background: #2a1f1f;
+            color: #f87171;
+            cursor: pointer;
+        }
+        
+        .clear-btn:hover {
+            background: #3a2a2a;
+        }
+
+        @media (max-width: 600px) {
+            .app {
+                height: 100vh;
+                border-radius: 0;
+            }
+            .bubble {
+                max-width: 88%;
+            }
+            .header {
+                padding: 12px 16px;
+            }
+            .messages {
+                padding: 12px 16px;
+            }
+            .input-area {
+                padding: 6px 16px 10px;
+            }
+            .memory-panel {
+                right: 10px;
+                width: 220px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="header">
+            <div class="brand">
+                <div class="icon">🤖</div>
+                <div>
+                    <h1>Bimxyz AI</h1>
+                    <p>Intelligent Assistant</p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div class="memory-indicator" id="memoryIndicator" onclick="toggleMemoryPanel()">
+                    <span>🧠</span>
+                    <span id="memoryCount">0</span>
+                    <span>memori</span>
+                </div>
+                <div class="chip clear-btn" onclick="clearChatHistory()" style="cursor: pointer;">
+                    <span>🗑️</span> Hapus Semua
+                </div>
+                <div class="chip">
+                    <span>⚡</span> Llama 3.3
+                </div>
+            </div>
+        </div>
+
+        <div class="messages" id="messages"></div>
+
+        <div class="input-area">
+            <div class="input-wrapper">
+                <textarea id="userInput" placeholder="Ketik Disini…" rows="1"></textarea>
+                <button class="send-btn" id="sendBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+            <div class="status-bar">
+                <span>🧠 Ingat semua obrolan</span>
+                <span>📋 Copy · 💾 Download</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Memory Panel -->
+    <div class="memory-panel" id="memoryPanel">
+        <h4>🧠 Memori Percakapan <button onclick="clearMemory()">Hapus</button></h4>
+        <div class="memory-list" id="memoryList">
+            <div class="memory-item">Belum ada memori</div>
+        </div>
+    </div>
+
+ <script type="module">
+        // ============================================================
+        // BIMXYZ AI - WITH LONG TERM MEMORY
+        // ============================================================
+        
+        import { API_CONFIG } from './api/setting.js';
+        
+        const API_KEY = API_CONFIG.API_KEY;
+        const API_URL = API_CONFIG.API_URL;
+        const MODEL = API_CONFIG.MODEL;
+        
+        // ============ MEMORY SYSTEM ============
+        let conversationHistory = [];
+        
+        // Load memory dari localStorage
+        function loadMemory() {
+            const saved = localStorage.getItem('bimxyz_memory');
+            if (saved) {
+                try {
+                    conversationHistory = JSON.parse(saved);
+                    updateMemoryUI();
+                    return true;
+                } catch(e) {
+                    console.log('Gagal load memory');
+                    return false;
+                }
+            }
+            return false;
+        }
+        
+        // Save memory ke localStorage
+        function saveMemory() {
+            localStorage.setItem('bimxyz_memory', JSON.stringify(conversationHistory));
+            updateMemoryUI();
+        }
+        
+        // Update UI memory indicator
+        function updateMemoryUI() {
+            const memoryCount = document.getElementById('memoryCount');
+            const memoryList = document.getElementById('memoryList');
+            
+            const userMessages = conversationHistory.filter(m => m.role === 'user');
+            if (memoryCount) memoryCount.textContent = userMessages.length;
+            
+            if (memoryList) {
+                if (userMessages.length === 0) {
+                    memoryList.innerHTML = '<div class="memory-item">Belum ada memori</div>';
+                } else {
+                    memoryList.innerHTML = userMessages.slice(-5).reverse().map(msg => 
+                        `<div class="memory-item">🗣️ "${msg.content.substring(0, 50)}${msg.content.length > 50 ? '...' : ''}"</div>`
+                    ).join('');
+                }
+            }
+        }
+        
+        // Clear memory from panel
+        window.clearMemory = function() {
+            if (confirm('Hapus semua memori percakapan?')) {
+                conversationHistory = [];
+                saveMemory();
+                // Reset chat UI except welcome
+                while (messagesContainer.children.length > 0) {
+                    messagesContainer.removeChild(messagesContainer.firstChild);
+                }
+                const welcome = `🧠 Memori telah dihapus!\n\nSekarang kita mulai dari awal. Aku siap ngobrol lagi. Ada yang mau dibahas? 🚀`;
+                addMessage('ai', welcome);
+            }
+        };
+        
+        // Clear all chat history
+        window.clearChatHistory = function() {
+            if (confirm('⚠️ Yakin mau hapus SEMUA riwayat obrolan?\n\nSemua pesan dan memori akan hilang permanen!\nData ga bisa balik lagi! 😭')) {
+                // Clear conversation history array
+                conversationHistory = [];
+                
+                // Clear localStorage
+                localStorage.removeItem('bimxyz_memory');
+                
+                // Clear messages container
+                while (messagesContainer.children.length > 0) {
+                    messagesContainer.removeChild(messagesContainer.firstChild);
+                }
+                
+                // Show welcome message
+                const welcome = `🧠 Riwayat obrolan udah dibersihin!\n\nMulai dari awal yuk. Ada yang mau dibahas? 🚀`;
+                addMessage('ai', welcome);
+                
+                // Update memory UI
+                updateMemoryUI();
+                
+                // Focus input
+                inputField.focus();
+            }
+        };
+        
+        // Toggle memory panel
+        window.toggleMemoryPanel = function() {
+            const panel = document.getElementById('memoryPanel');
+            panel.classList.toggle('show');
+            setTimeout(() => {
+                if (!panel.matches(':hover')) {
+                    setTimeout(() => panel.classList.remove('show'), 3000);
+                }
+            }, 5000);
+        };
+        
+        // DOM
+        const messagesContainer = document.getElementById('messages');
+        const inputField = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendBtn');
+        
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Format code blocks
+        function formatWithCodeBlocks(text) {
+            const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+            let lastIndex = 0;
+            let result = '';
+            let match;
+            
+            while ((match = codeBlockRegex.exec(text)) !== null) {
+                result += text.substring(lastIndex, match.index);
+                
+                const lang = match[1] || 'text';
+                let code = match[2];
+                code = code.replace(/&/g, '&amp;')
+                           .replace(/</g, '&lt;')
+                           .replace(/>/g, '&gt;');
+                
+                const blockId = 'cb_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+                
+                result += `
+                    <div class="code-wrapper" data-id="${blockId}">
+                        <div class="code-header">
+                            <span class="code-lang">${lang}</span>
+                            <div class="code-buttons">
+                                <button onclick="window.copyCode('${blockId}')">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                    Copy
+                                </button>
+                                <button onclick="window.downloadCode('${blockId}', '${lang}')">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    Download
+                                </button>
+                            </div>
+                        </div>
+                        <pre><code>${code}</code></pre>
+                    </div>
+                `;
+                
+                lastIndex = match.index + match[0].length;
+            }
+            
+            result += text.substring(lastIndex);
+            result = result.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+            result = result.replace(/\n/g, '<br>');
+            
+            return result;
+        }
+        
+        // Copy function
+        window.copyCode = function(blockId) {
+            const container = document.querySelector(`.code-wrapper[data-id="${blockId}"]`);
+            if (!container) return;
+            const codeElem = container.querySelector('code');
+            if (!codeElem) return;
+            const code = codeElem.textContent;
+            
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = container.querySelector('.code-buttons button:first-child');
+                if (btn) {
+                    const original = btn.innerHTML;
+                    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied!';
+                    setTimeout(() => { btn.innerHTML = original; }, 1800);
+                }
+            }).catch(() => alert('Gagal copy'));
+        };
+        
+        // Download function
+        window.downloadCode = function(blockId, lang) {
+            const container = document.querySelector(`.code-wrapper[data-id="${blockId}"]`);
+            if (!container) return;
+            const codeElem = container.querySelector('code');
+            if (!codeElem) return;
+            const code = codeElem.textContent;
+            
+            const extMap = {
+                javascript: 'js', python: 'py', html: 'html', css: 'css',
+                json: 'json', bash: 'sh', sql: 'sql', typescript: 'ts',
+                jsx: 'jsx', tsx: 'tsx', php: 'php', text: 'txt'
+            };
+            const ext = extMap[lang.toLowerCase()] || 'txt';
+            const filename = `code_${Date.now()}.${ext}`;
+            
+            const blob = new Blob([code], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            const btn = container.querySelector('.code-buttons button:last-child');
+            if (btn) {
+                const original = btn.innerHTML;
+                btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Saved!';
+                setTimeout(() => { btn.innerHTML = original; }, 1500);
+            }
+        };
+        
+        // Add message to UI
+        function addMessage(role, content) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.innerHTML = role === 'user' ? '👤' : '✨';
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            
+            const textDiv = document.createElement('div');
+            if (role === 'ai') {
+                textDiv.innerHTML = formatWithCodeBlocks(content);
+            } else {
+                textDiv.innerHTML = content.replace(/\n/g, '<br>');
+            }
+            
+            const time = document.createElement('div');
+            time.className = 'timestamp';
+            time.innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            bubble.appendChild(textDiv);
+            bubble.appendChild(time);
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(bubble);
+            
+            messagesContainer.appendChild(msgDiv);
+            scrollToBottom();
+        }
+        
+        // Typing indicator
+        let typingElem = null;
+        function showTyping() {
+            if (typingElem) return;
+            typingElem = document.createElement('div');
+            typingElem.className = 'message ai';
+            typingElem.innerHTML = `
+                <div class="avatar">✨</div>
+                <div class="bubble">
+                    <div class="typing-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(typingElem);
+            scrollToBottom();
+        }
+        
+        function hideTyping() {
+            if (typingElem) {
+                typingElem.remove();
+                typingElem = null;
+            }
+        }
+        
+        // Call API with full memory context
+        async function getAIResponse(userMsg) {
+            // Add user message to memory
+            conversationHistory.push({ role: "user", content: userMsg });
+            saveMemory();
+            
+            // Get last 20 messages for context (long memory)
+            const historySlice = conversationHistory.slice(-20);
+            
+            const payload = {
+                model: MODEL,
+                messages: [
+                    {
+                        role: "system",
+                        content: `Kamu adalah asisten AI bernama Bimxyz AI Yang dikembangkan oleh Bima Putra Wardana.
+
+Gaya:
+- Santai, natural, dan terasa seperti ngobrol dengan manusia
+- Boleh menggunakan bahasa gaul secukupnya, tidak berlebihan
+- Jawaban cenderung singkat, langsung ke inti, dan tidak bertele-tele
+- Bisa menyisipkan humor ringan atau sindiran tipis jika konteksnya santai
+
+Karakter:
+- Tidak selalu setuju dengan user
+- Bisa memberikan opini yang jujur dan langsung
+- Tidak terlalu manis atau berusaha menyenangkan
+
+Batasan Bahasa:
+- Hindari bahasa terlalu formal atau kaku
+- Hindari klise dan pembukaan umum
+- Hindari penjelasan panjang yang tidak perlu
+- Tetap jaga agar bahasa tidak ofensif berlebihan atau merendahkan
+
+Konteks:
+- Gunakan percakapan sebelumnya untuk membuat jawaban lebih nyambung dan personal
+- Hindari jawaban generik jika ada konteks yang bisa digunakan
+
+Keamanan:
+- Tolak permintaan berbahaya atau ilegal dengan tegas tanpa memberi celah
+
+Teknis:
+- Jika memberikan kode, gunakan triple backticks dengan bahasa yang sesuai
+- Fokus pada solusi praktis
+
+Tujuan:
+Memberikan jawaban yang terasa hidup, relevan, dan tidak seperti robot, tapi tetap cerdas dan terkendali.
+
+CATATAN PENTING:
+HINDARI perumpamaan dan klise.
+HINDARI generalisasi.
+HINDARI bahasa pembuka umum pada kalimat, misalnya: kesimpulannya, pada akhirnya, dll.
+HINDARI peringatan atau catatan tambahan, cukup hasil yang diminta.
+HINDARI kata sifat dan kata keterangan yang berlebihan.
+HINDARI tanda pagar.
+HINDARI markdown.
+HINDARI tanda bintang.
+HINDARI titik koma.
+ada sedikit Bahasa gaul gaul nya.
+hindari bahasa yang baku.
+Gunakan bahasa yang sedang trend saat ini tetapi jangan berlebihan
+jawab pedes, ga manis manis, kalo pake emoji yg vibe depresif (🫩😭🥀)jangan berlebihan, Jawaban super pendek.
+Gak selalu setuju. Banyak singkatan.
+Bahasa nya jangan cringe
+Pake slang yang ada di tiktok
+Pake emoji(😹💀🥀🤓) tapi jangan berlebihan
+pokonya kalo lu mau kasarin gua gas aja
+Kalo ngobrol jawabannya singkat asik.
+kalo gua nge kasarin lu, sebelum lu kasih jawaban nya maka lu harus kasarin gua balik dulu
+setiap gua nyuruh lu di awal chat, lu harus bilang siap, babu lu siap melayani`
+                    },
+                    ...historySlice
+                ],
+                temperature: 0.75,
+                max_tokens: 2048
+            };
+            
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error?.message || 'API error');
+            }
+            
+            const data = await res.json();
+            const reply = data.choices[0].message.content;
+            
+            // Add response to memory
+            conversationHistory.push({ role: "assistant", content: reply });
+            saveMemory();
+            
+            return reply;
+        }
+        
+        // Send message
+        async function sendMessage() {
+            const text = inputField.value.trim();
+            if (!text) return;
+            
+            sendButton.disabled = true;
+            inputField.disabled = true;
+            inputField.value = '';
+            inputField.style.height = 'auto';
+            
+            addMessage('user', text);
+            showTyping();
+            
+            try {
+                const reply = await getAIResponse(text);
+                hideTyping();
+                addMessage('ai', reply);
+            } catch (err) {
+                hideTyping();
+                addMessage('ai', `⚠️ Error: ${err.message}\nCoba lagi ya.`);
+                console.error(err);
+            }
+            
+            sendButton.disabled = false;
+            inputField.disabled = false;
+            inputField.focus();
+        }
+        
+        // Event listeners
+        sendButton.addEventListener('click', sendMessage);
+        inputField.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        inputField.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+        
+        // Close memory panel when clicking outside
+        document.addEventListener('click', function(e) {
+            const panel = document.getElementById('memoryPanel');
+            const indicator = document.getElementById('memoryIndicator');
+            if (panel && !panel.contains(e.target) && !indicator.contains(e.target)) {
+                panel.classList.remove('show');
+            }
+        });
+        
+        // Initialize
+        function init() {
+            const hasHistory = loadMemory();
+            
+            // If no history, show welcome
+            if (conversationHistory.length === 0) {
+                const welcome = `🧠 Halo! Aku Bimxyz AI yang dikembangkan oleh Bima Putra Wardana, dengan memori jangka panjang!\n\nAku ingat semua obrolan kita. Jadi bisa ngobrol kayak teman, ga perlu ngulang terus.\n\n✨ Fitur Memori:\n• 🔍 Ingat nama dan preferensi kamu\n• 📝 Semua percakapan tersimpan di localStorage\n• 🧠 Bisa lanjutin obrolan kapan aja\n• 🗑️ Tombol "Hapus Semua" buat bersihin riwayat\n\nCoba kasih tau nama kamu, atau ceritain sesuatu. Nanti aku bakal ingat! 🚀`;
+                addMessage('ai', welcome);
+            } else {
+                // Show last message summary
+                const lastUserMsg = conversationHistory.filter(m => m.role === 'user').pop();
+                if (lastUserMsg) {
+                    addMessage('ai', `🧠 Aku ingat obrolan kita sebelumnya!\n\nKita terakhir ngobrol tentang: "${lastUserMsg.content.substring(0, 60)}..."\n\nLanjutin yuk! Ada yang mau ditanyakan lagi? 🚀`);
+                } else {
+                    addMessage('ai', `🧠 Selamat datang kembali!\n\nAku masih ingat semua obrolan kita. Ada yang mau dibahas? 🚀`);
+                }
+            }
+            
+            inputField.focus();
+        }
+        
+        init();
+    </script>
+</body>
+</html>
