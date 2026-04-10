@@ -570,22 +570,18 @@ textarea.chat-input {
 </div>
 
 <script>
-    // ========== JAVASCRIPT WITH GROQ API (config dari api/setting.js) ==========
+    // ========== JAVASCRIPT WITH GROQ API (Hardcoded API Key) ==========
+
+// Konfigurasi Groq - LANGSUNG DI SINI
+const GROQ_API_KEY = "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";
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 // State global
 let chats = [];
 let activeChatId = null;
 let isLoading = false;
 
-// Konfigurasi Groq (akan diambil dari api/setting.js)
-let GROQ_API_KEY = "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";
-let GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-let GROQ_MODEL = "llama-3.3-70b-versatile";
-
-// Export ke window
-window.API_KEY = API_KEY;
-window.API_URL = API_URL;
-window.MODEL = MODEL;
 // DOM elements
 const sidebarEl = document.getElementById('sidebar');
 const overlayEl = document.getElementById('sidebarOverlay');
@@ -865,7 +861,7 @@ async function callGroqAPI(userMessage) {
         }
     } catch (err) {
         console.error('Groq API Error:', err);
-        return `⚠️ Gagal terhubung ke Groq API: ${err.message}. Periksa API key dan koneksi internet.`;
+        return `⚠️ Gagal terhubung ke Groq API: ${err.message}`;
     }
 }
 
@@ -873,12 +869,6 @@ async function callGroqAPI(userMessage) {
 async function sendMessage() {
     const text = messageInput.value.trim();
     if (!text || isLoading) return;
-
-    // Cek konfigurasi API sudah diload
-    if (!GROQ_API_KEY || GROQ_API_KEY === "gsk_xxx") {
-        alert("⚠️ API Key belum dikonfigurasi!\n\nSilakan edit file api/setting.js dan masukkan API Key Groq yang valid.");
-        return;
-    }
 
     const activeChat = chats.find(c => c.id === activeChatId);
     if (!activeChat) return;
@@ -909,39 +899,6 @@ async function sendMessage() {
     messageInput.disabled = false;
     renderMessages();
     messageInput.focus();
-}
-
-// Load konfigurasi dari api/setting.js
-async function loadConfig() {
-    try {
-        // Dynamically import config from api/setting.js
-        const script = document.createElement('script');
-        script.src = 'api/setting.js';
-        script.onload = () => {
-            // Ambil dari global variable yang didefinisikan di setting.js
-            GROQ_API_KEY = window.API_KEY || window.GROQ_API_KEY;
-            GROQ_API_URL = window.API_URL || "https://api.groq.com/openai/v1/chat/completions";
-            GROQ_MODEL = window.MODEL || "llama-3.3-70b-versatile";
-            
-            console.log("Config loaded:", { 
-                hasKey: !!GROQ_API_KEY, 
-                url: GROQ_API_URL, 
-                model: GROQ_MODEL 
-            });
-            
-            if (!GROQ_API_KEY || GROQ_API_KEY === "gsk_xxx") {
-                console.warn("⚠️ API Key belum diisi. Edit api/setting.js dengan API key asli.");
-            }
-        };
-        script.onerror = () => {
-            console.error("Gagal load api/setting.js, gunakan default (tidak akan berfungsi)");
-            GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-            GROQ_MODEL = "llama-3.3-70b-versatile";
-        };
-        document.head.appendChild(script);
-    } catch (e) {
-        console.error("Error loading config:", e);
-    }
 }
 
 // Load data dari localStorage
@@ -1030,7 +987,6 @@ function bindEvents() {
 }
 
 // Inisialisasi
-loadConfig();
 loadInitialData();
 bindEvents();
 setTimeout(() => messageInput.focus(), 200);
