@@ -570,380 +570,466 @@ textarea.chat-input {
 </div>
 
 <script>
-    // ========== JAVASCRIPT ==========
-    // Konfigurasi
-    const STORAGE_KEY = 'ai_chat_app_data';
-    const API_URL = '/api/chat';
+    // ========== JAVASCRIPT WITH GROQ API (config dari api/setting.js) ==========
 
-    // State global
-    let chats = [];
-    let activeChatId = null;
-    let isLoading = false;
+// State global
+let chats = [];
+let activeChatId = null;
+let isLoading = false;
 
-    // DOM elements
-    const sidebarEl = document.getElementById('sidebar');
-    const overlayEl = document.getElementById('sidebarOverlay');
-    const menuToggle = document.getElementById('menuToggle');
-    const newChatSidebar = document.getElementById('newChatSidebarBtn');
-    const newChatMobile = document.getElementById('newChatMobileBtn');
-    const chatListContainer = document.getElementById('chatList');
-    const messagesArea = document.getElementById('messagesArea');
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const activeChatTitleSpan = document.getElementById('activeChatTitle');
+// Konfigurasi Groq (akan diambil dari api/setting.js)
+let GROQ_API_KEY = "";
+let GROQ_API_URL = "";
+let GROQ_MODEL = "";
 
-    // Helper: generate ID unik
-    function generateId() {
-        return Date.now() + '-' + Math.random().toString(36).substring(2, 8);
-    }
+// DOM elements
+const sidebarEl = document.getElementById('sidebar');
+const overlayEl = document.getElementById('sidebarOverlay');
+const menuToggle = document.getElementById('menuToggle');
+const newChatSidebar = document.getElementById('newChatSidebarBtn');
+const newChatMobile = document.getElementById('newChatMobileBtn');
+const chatListContainer = document.getElementById('chatList');
+const messagesArea = document.getElementById('messagesArea');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const activeChatTitleSpan = document.getElementById('activeChatTitle');
 
-    // Simpan ke localStorage
-    function saveToLocalStorage() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ chats, activeChatId }));
-    }
+// Helper: generate ID unik
+function generateId() {
+    return Date.now() + '-' + Math.random().toString(36).substring(2, 8);
+}
 
-    // Escape HTML
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
-    }
+// Simpan ke localStorage
+function saveToLocalStorage() {
+    localStorage.setItem('ai_chat_app_data', JSON.stringify({ chats, activeChatId }));
+}
 
-    // Auto scroll ke bawah
-    function scrollToBottom() {
-        setTimeout(() => {
-            messagesArea.scrollTop = messagesArea.scrollHeight;
-        }, 50);
-    }
+// Escape HTML
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
 
-    // Update title chat berdasarkan pesan pertama user
-    function updateChatTitleIfNeeded(chat, userMessage) {
-        if (!chat) return;
-        if (chat.title === "Chat Baru" || chat.title === "Selamat Datang" || chat.title === "Percakapan Baru") {
-            let newTitle = userMessage.trim();
-            if (newTitle.length > 28) newTitle = newTitle.substring(0, 25) + '...';
-            if (newTitle === "") newTitle = "Percakapan";
-            chat.title = newTitle;
-            saveToLocalStorage();
-            renderSidebar();
-            if (activeChatId === chat.id) {
-                activeChatTitleSpan.innerText = chat.title;
-            }
+// Auto scroll ke bawah
+function scrollToBottom() {
+    setTimeout(() => {
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+    }, 50);
+}
+
+// Update title chat berdasarkan pesan pertama user
+function updateChatTitleIfNeeded(chat, userMessage) {
+    if (!chat) return;
+    if (chat.title === "Chat Baru" || chat.title === "Selamat Datang" || chat.title === "Percakapan Baru") {
+        let newTitle = userMessage.trim();
+        if (newTitle.length > 28) newTitle = newTitle.substring(0, 25) + '...';
+        if (newTitle === "") newTitle = "Percakapan";
+        chat.title = newTitle;
+        saveToLocalStorage();
+        renderSidebar();
+        if (activeChatId === chat.id) {
+            activeChatTitleSpan.innerText = chat.title;
         }
     }
+}
 
-    // Render semua pesan di chat aktif + loading indicator
-    function renderMessages() {
-        const activeChat = chats.find(c => c.id === activeChatId);
-        if (!activeChat) {
-            messagesArea.innerHTML = `<div class="empty-chat"><i class="fas fa-comments"></i><p>Tidak ada chat dipilih</p></div>`;
-            return;
-        }
+// Render semua pesan di chat aktif + loading indicator
+function renderMessages() {
+    const activeChat = chats.find(c => c.id === activeChatId);
+    if (!activeChat) {
+        messagesArea.innerHTML = `<div class="empty-chat"><i class="fas fa-comments"></i><p>Tidak ada chat dipilih</p></div>`;
+        return;
+    }
 
-        activeChatTitleSpan.innerText = activeChat.title || "Percakapan";
-        const messages = activeChat.messages || [];
+    activeChatTitleSpan.innerText = activeChat.title || "Percakapan";
+    const messages = activeChat.messages || [];
 
-        if (messages.length === 0 && !isLoading) {
-            messagesArea.innerHTML = `<div class="empty-chat"><i class="fas fa-comment-dots"></i><p>Mulai obrolan dengan AI</p></div>`;
-            return;
-        }
+    if (messages.length === 0 && !isLoading) {
+        messagesArea.innerHTML = `<div class="empty-chat"><i class="fas fa-comment-dots"></i><p>Mulai obrolan dengan AI</p></div>`;
+        return;
+    }
 
-        let html = '';
-        for (let msg of messages) {
-            if (msg.role === 'user') {
-                html += `
-                    <div class="message user">
-                        <div class="bubble">${escapeHtml(msg.content)}</div>
-                    </div>
-                `;
-            } else {
-                html += `
-                    <div class="message ai">
-                        <div class="bubble">
-                            <div class="ai-avatar"><i class="fas fa-robot"></i> <span>AI</span></div>
-                            <div>${escapeHtml(msg.content)}</div>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        // Loading indicator AI
-        if (isLoading) {
+    let html = '';
+    for (let msg of messages) {
+        if (msg.role === 'user') {
+            html += `
+                <div class="message user">
+                    <div class="bubble">${escapeHtml(msg.content)}</div>
+                </div>
+            `;
+        } else {
             html += `
                 <div class="message ai">
-                    <div class="loading-dots">
-                        <span></span><span></span><span></span>
-                        <span style="margin-left: 4px; font-size: 0.75rem;">AI sedang mengetik</span>
+                    <div class="bubble">
+                        <div class="ai-avatar"><i class="fas fa-robot"></i> <span>AI</span></div>
+                        <div>${escapeHtml(msg.content)}</div>
                     </div>
                 </div>
             `;
         }
-
-        messagesArea.innerHTML = html;
-        scrollToBottom();
     }
 
-    // Render daftar chat di sidebar
-    function renderSidebar() {
-        if (!chatListContainer) return;
-        if (chats.length === 0) {
-            chatListContainer.innerHTML = `<div style="text-align:center; padding:2rem; color:#6b7280; font-size:0.8rem;">Belum ada chat<br>klik + untuk baru</div>`;
-            return;
-        }
-
-        let itemsHtml = '';
-        chats.forEach(chat => {
-            const isActive = (activeChatId === chat.id);
-            const lastMsg = chat.messages && chat.messages.length ? chat.messages[chat.messages.length-1].content : "Belum ada pesan";
-            const preview = lastMsg.length > 35 ? lastMsg.substring(0, 32) + '...' : lastMsg;
-            itemsHtml += `
-                <div class="chat-item ${isActive ? 'active' : ''}" data-chat-id="${chat.id}">
-                    <div class="chat-info">
-                        <div class="chat-title">
-                            <i class="fas fa-message"></i> ${escapeHtml(chat.title || 'Tanpa judul')}
-                        </div>
-                        <div class="chat-preview">${escapeHtml(preview)}</div>
-                    </div>
-                    <button class="delete-chat" data-delete-id="${chat.id}">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
+    // Loading indicator AI
+    if (isLoading) {
+        html += `
+            <div class="message ai">
+                <div class="loading-dots">
+                    <span></span><span></span><span></span>
+                    <span style="margin-left: 4px; font-size: 0.75rem;">AI sedang mengetik</span>
                 </div>
-            `;
-        });
-        chatListContainer.innerHTML = itemsHtml;
+            </div>
+        `;
+    }
 
-        // Event switch chat
-        document.querySelectorAll('.chat-item').forEach(el => {
-            const chatId = el.getAttribute('data-chat-id');
-            if (chatId) {
-                el.addEventListener('click', (e) => {
-                    if (e.target.closest('.delete-chat')) return;
-                    switchChat(chatId);
-                });
-            }
-        });
+    messagesArea.innerHTML = html;
+    scrollToBottom();
+}
 
-        // Event hapus chat
-        document.querySelectorAll('.delete-chat').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const deleteId = btn.getAttribute('data-delete-id');
-                if (deleteId) deleteChatById(deleteId);
+// Render daftar chat di sidebar
+function renderSidebar() {
+    if (!chatListContainer) return;
+    if (chats.length === 0) {
+        chatListContainer.innerHTML = `<div style="text-align:center; padding:2rem; color:#6b7280; font-size:0.8rem;">Belum ada chat<br>klik + untuk baru</div>`;
+        return;
+    }
+
+    let itemsHtml = '';
+    chats.forEach(chat => {
+        const isActive = (activeChatId === chat.id);
+        const lastMsg = chat.messages && chat.messages.length ? chat.messages[chat.messages.length-1].content : "Belum ada pesan";
+        const preview = lastMsg.length > 35 ? lastMsg.substring(0, 32) + '...' : lastMsg;
+        itemsHtml += `
+            <div class="chat-item ${isActive ? 'active' : ''}" data-chat-id="${chat.id}">
+                <div class="chat-info">
+                    <div class="chat-title">
+                        <i class="fas fa-message"></i> ${escapeHtml(chat.title || 'Tanpa judul')}
+                    </div>
+                    <div class="chat-preview">${escapeHtml(preview)}</div>
+                </div>
+                <button class="delete-chat" data-delete-id="${chat.id}">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+        `;
+    });
+    chatListContainer.innerHTML = itemsHtml;
+
+    // Event switch chat
+    document.querySelectorAll('.chat-item').forEach(el => {
+        const chatId = el.getAttribute('data-chat-id');
+        if (chatId) {
+            el.addEventListener('click', (e) => {
+                if (e.target.closest('.delete-chat')) return;
+                switchChat(chatId);
             });
+        }
+    });
+
+    // Event hapus chat
+    document.querySelectorAll('.delete-chat').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const deleteId = btn.getAttribute('data-delete-id');
+            if (deleteId) deleteChatById(deleteId);
         });
-    }
+    });
+}
 
-    // Pindah antar chat
-    function switchChat(chatId) {
-        const targetChat = chats.find(c => c.id === chatId);
-        if (targetChat && activeChatId !== chatId && !isLoading) {
-            activeChatId = chatId;
-            saveToLocalStorage();
-            renderSidebar();
-            renderMessages();
-            // Tutup sidebar di mobile
-            if (window.innerWidth < 768) closeSidebar();
-            messageInput.disabled = false;
-            sendBtn.disabled = false;
-            messageInput.focus();
-        }
-    }
-
-    // Hapus chat
-    function deleteChatById(chatId) {
-        if (isLoading) return;
-        if (!confirm("Hapus percakapan ini?")) return;
-        const index = chats.findIndex(c => c.id === chatId);
-        if (index !== -1) {
-            chats.splice(index, 1);
-            if (chats.length === 0) {
-                // buat default chat jika kosong
-                const newChat = {
-                    id: generateId(),
-                    title: "Selamat Datang",
-                    messages: [{ role: 'ai', content: "Halo! Saya AI siap membantu. Tanyakan apa saja." }]
-                };
-                chats.push(newChat);
-                activeChatId = newChat.id;
-            } else {
-                if (activeChatId === chatId) {
-                    activeChatId = chats[0].id;
-                }
-            }
-            saveToLocalStorage();
-            renderSidebar();
-            renderMessages();
-        }
-    }
-
-    // Membuat chat baru
-    function createNewChat() {
-        if (isLoading) return;
-        const newChat = {
-            id: generateId(),
-            title: "Chat Baru",
-            messages: []
-        };
-        chats.unshift(newChat);
-        activeChatId = newChat.id;
+// Pindah antar chat
+function switchChat(chatId) {
+    const targetChat = chats.find(c => c.id === chatId);
+    if (targetChat && activeChatId !== chatId && !isLoading) {
+        activeChatId = chatId;
         saveToLocalStorage();
         renderSidebar();
         renderMessages();
-        messageInput.value = '';
-        messageInput.disabled = false;
-        sendBtn.disabled = false;
-        messageInput.focus();
+        // Tutup sidebar di mobile
         if (window.innerWidth < 768) closeSidebar();
-    }
-
-    // Panggil API AI
-    async function callAIApi(userMessage) {
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: userMessage })
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
-            if (data && typeof data.reply === 'string') return data.reply;
-            throw new Error('Format respons invalid');
-        } catch (err) {
-            console.error('API Error:', err);
-            return `⚠️ Gagal terhubung ke server: ${err.message}. Pastikan endpoint ${API_URL} tersedia.`;
-        }
-    }
-
-    // Kirim pesan utama
-    async function sendMessage() {
-        const text = messageInput.value.trim();
-        if (!text || isLoading) return;
-
-        const activeChat = chats.find(c => c.id === activeChatId);
-        if (!activeChat) return;
-
-        // tambah pesan user
-        activeChat.messages.push({ role: 'user', content: text });
-        updateChatTitleIfNeeded(activeChat, text);
-        saveToLocalStorage();
-        messageInput.value = '';
-        messageInput.style.height = 'auto';
-        renderMessages();
-
-        // Loading state
-        isLoading = true;
-        sendBtn.disabled = true;
-        messageInput.disabled = true;
-        renderMessages();
-
-        // Panggil AI
-        const aiReply = await callAIApi(text);
-
-        // Tambah balasan AI
-        activeChat.messages.push({ role: 'ai', content: aiReply });
-        saveToLocalStorage();
-
-        isLoading = false;
-        sendBtn.disabled = false;
         messageInput.disabled = false;
-        renderMessages();
+        sendBtn.disabled = false;
         messageInput.focus();
     }
+}
 
-    // Load data dari localStorage
-    function loadInitialData() {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            try {
-                const data = JSON.parse(stored);
-                if (data.chats && Array.isArray(data.chats) && data.activeChatId) {
-                    chats = data.chats;
-                    activeChatId = data.activeChatId;
-                    const exists = chats.some(c => c.id === activeChatId);
-                    if (!exists && chats.length) activeChatId = chats[0].id;
-                    if (chats.length === 0) throw new Error();
-                } else throw new Error();
-            } catch(e) {
-                createDefaultData();
-            }
+// Hapus chat
+function deleteChatById(chatId) {
+    if (isLoading) return;
+    if (!confirm("Hapus percakapan ini?")) return;
+    const index = chats.findIndex(c => c.id === chatId);
+    if (index !== -1) {
+        chats.splice(index, 1);
+        if (chats.length === 0) {
+            // buat default chat jika kosong
+            const newChat = {
+                id: generateId(),
+                title: "Selamat Datang",
+                messages: [{ role: 'ai', content: "Halo! Saya AI siap membantu. Tanyakan apa saja." }]
+            };
+            chats.push(newChat);
+            activeChatId = newChat.id;
         } else {
+            if (activeChatId === chatId) {
+                activeChatId = chats[0].id;
+            }
+        }
+        saveToLocalStorage();
+        renderSidebar();
+        renderMessages();
+    }
+}
+
+// Membuat chat baru
+function createNewChat() {
+    if (isLoading) return;
+    const newChat = {
+        id: generateId(),
+        title: "Chat Baru",
+        messages: []
+    };
+    chats.unshift(newChat);
+    activeChatId = newChat.id;
+    saveToLocalStorage();
+    renderSidebar();
+    renderMessages();
+    messageInput.value = '';
+    messageInput.disabled = false;
+    sendBtn.disabled = false;
+    messageInput.focus();
+    if (window.innerWidth < 768) closeSidebar();
+}
+
+// Panggil API Groq
+async function callGroqAPI(userMessage) {
+    // Ambil history chat untuk context
+    const activeChat = chats.find(c => c.id === activeChatId);
+    const messages = activeChat?.messages || [];
+    
+    // Format message history untuk Groq
+    const chatHistory = [];
+    
+    // Tambahkan system prompt
+    chatHistory.push({
+        role: "system",
+        content: "Kamu adalah asisten AI yang ramah, cerdas, dan membantu. Gunakan bahasa Indonesia yang baik dan benar. Berikan jawaban yang informatif dan akurat."
+    });
+    
+    // Tambahkan history chat (max 10 pesan terakhir biar ga kepanjangan)
+    const recentMessages = messages.slice(-10);
+    for (let msg of recentMessages) {
+        chatHistory.push({
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content
+        });
+    }
+    
+    // Tambahkan pesan user terbaru
+    chatHistory.push({
+        role: "user",
+        content: userMessage
+    });
+    
+    try {
+        const response = await fetch(GROQ_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${GROQ_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: GROQ_MODEL,
+                messages: chatHistory,
+                temperature: 0.7,
+                max_tokens: 1024
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data && data.choices && data.choices[0] && data.choices[0].message) {
+            return data.choices[0].message.content;
+        } else {
+            throw new Error('Format respons Groq invalid');
+        }
+    } catch (err) {
+        console.error('Groq API Error:', err);
+        return `⚠️ Gagal terhubung ke Groq API: ${err.message}. Periksa API key dan koneksi internet.`;
+    }
+}
+
+// Kirim pesan utama
+async function sendMessage() {
+    const text = messageInput.value.trim();
+    if (!text || isLoading) return;
+
+    // Cek konfigurasi API sudah diload
+    if (!GROQ_API_KEY || GROQ_API_KEY === "gsk_xxx") {
+        alert("⚠️ API Key belum dikonfigurasi!\n\nSilakan edit file api/setting.js dan masukkan API Key Groq yang valid.");
+        return;
+    }
+
+    const activeChat = chats.find(c => c.id === activeChatId);
+    if (!activeChat) return;
+
+    // tambah pesan user
+    activeChat.messages.push({ role: 'user', content: text });
+    updateChatTitleIfNeeded(activeChat, text);
+    saveToLocalStorage();
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+    renderMessages();
+
+    // Loading state
+    isLoading = true;
+    sendBtn.disabled = true;
+    messageInput.disabled = true;
+    renderMessages();
+
+    // Panggil Groq API
+    const aiReply = await callGroqAPI(text);
+
+    // Tambah balasan AI
+    activeChat.messages.push({ role: 'ai', content: aiReply });
+    saveToLocalStorage();
+
+    isLoading = false;
+    sendBtn.disabled = false;
+    messageInput.disabled = false;
+    renderMessages();
+    messageInput.focus();
+}
+
+// Load konfigurasi dari api/setting.js
+async function loadConfig() {
+    try {
+        // Dynamically import config from api/setting.js
+        const script = document.createElement('script');
+        script.src = 'api/setting.js';
+        script.onload = () => {
+            // Ambil dari global variable yang didefinisikan di setting.js
+            GROQ_API_KEY = window.API_KEY || window.GROQ_API_KEY;
+            GROQ_API_URL = window.API_URL || "https://api.groq.com/openai/v1/chat/completions";
+            GROQ_MODEL = window.MODEL || "llama-3.3-70b-versatile";
+            
+            console.log("Config loaded:", { 
+                hasKey: !!GROQ_API_KEY, 
+                url: GROQ_API_URL, 
+                model: GROQ_MODEL 
+            });
+            
+            if (!GROQ_API_KEY || GROQ_API_KEY === "gsk_xxx") {
+                console.warn("⚠️ API Key belum diisi. Edit api/setting.js dengan API key asli.");
+            }
+        };
+        script.onerror = () => {
+            console.error("Gagal load api/setting.js, gunakan default (tidak akan berfungsi)");
+            GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+            GROQ_MODEL = "llama-3.3-70b-versatile";
+        };
+        document.head.appendChild(script);
+    } catch (e) {
+        console.error("Error loading config:", e);
+    }
+}
+
+// Load data dari localStorage
+function loadInitialData() {
+    const stored = localStorage.getItem('ai_chat_app_data');
+    if (stored) {
+        try {
+            const data = JSON.parse(stored);
+            if (data.chats && Array.isArray(data.chats) && data.activeChatId) {
+                chats = data.chats;
+                activeChatId = data.activeChatId;
+                const exists = chats.some(c => c.id === activeChatId);
+                if (!exists && chats.length) activeChatId = chats[0].id;
+                if (chats.length === 0) throw new Error();
+            } else throw new Error();
+        } catch(e) {
             createDefaultData();
         }
-        // Pastikan tiap chat punya messages array
-        chats.forEach(chat => {
-            if (!chat.messages) chat.messages = [];
-            if (!chat.title) chat.title = "Chat Baru";
-        });
-        saveToLocalStorage();
-        renderSidebar();
-        renderMessages();
+    } else {
+        createDefaultData();
     }
+    // Pastikan tiap chat punya messages array
+    chats.forEach(chat => {
+        if (!chat.messages) chat.messages = [];
+        if (!chat.title) chat.title = "Chat Baru";
+    });
+    saveToLocalStorage();
+    renderSidebar();
+    renderMessages();
+}
 
-    function createDefaultData() {
-        const defaultChat = {
-            id: generateId(),
-            title: "Selamat Datang",
-            messages: [
-                { role: 'ai', content: "Halo! 👋 Saya asisten AI modern. Silakan tanya apa pun tentang coding, ide, atau informasi lainnya!" }
-            ]
-        };
-        chats = [defaultChat];
-        activeChatId = defaultChat.id;
-    }
+function createDefaultData() {
+    const defaultChat = {
+        id: generateId(),
+        title: "Selamat Datang",
+        messages: [
+            { role: 'ai', content: "Halo! 👋 Saya asisten AI berbasis Groq (Llama 3.3). Silakan tanya apa pun tentang coding, ide, atau informasi lainnya!" }
+        ]
+    };
+    chats = [defaultChat];
+    activeChatId = defaultChat.id;
+}
 
-    // Sidebar mobile handlers
-    function openSidebar() {
-        sidebarEl.classList.add('open');
-        overlayEl.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
+// Sidebar mobile handlers
+function openSidebar() {
+    sidebarEl.classList.add('open');
+    overlayEl.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
 
-    function closeSidebar() {
-        sidebarEl.classList.remove('open');
-        overlayEl.classList.remove('active');
-        document.body.style.overflow = '';
-    }
+function closeSidebar() {
+    sidebarEl.classList.remove('open');
+    overlayEl.classList.remove('active');
+    document.body.style.overflow = '';
+}
 
-    function toggleSidebar() {
-        if (sidebarEl.classList.contains('open')) closeSidebar();
-        else openSidebar();
-    }
+function toggleSidebar() {
+    if (sidebarEl.classList.contains('open')) closeSidebar();
+    else openSidebar();
+}
 
-    // auto resize textarea
-    function autoResizeTextarea() {
-        messageInput.style.height = 'auto';
-        messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
-    }
+// auto resize textarea
+function autoResizeTextarea() {
+    messageInput.style.height = 'auto';
+    messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+}
 
-    // Event binding
-    function bindEvents() {
-        sendBtn.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-        messageInput.addEventListener('input', autoResizeTextarea);
+// Event binding
+function bindEvents() {
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    messageInput.addEventListener('input', autoResizeTextarea);
 
-        newChatSidebar.addEventListener('click', createNewChat);
-        newChatMobile.addEventListener('click', createNewChat);
-        menuToggle.addEventListener('click', toggleSidebar);
-        overlayEl.addEventListener('click', closeSidebar);
-        window.addEventListener('resize', () => {
-            if (window.innerWidth >= 768) closeSidebar();
-        });
-    }
+    newChatSidebar.addEventListener('click', createNewChat);
+    newChatMobile.addEventListener('click', createNewChat);
+    menuToggle.addEventListener('click', toggleSidebar);
+    overlayEl.addEventListener('click', closeSidebar);
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 768) closeSidebar();
+    });
+}
 
-    // Inisialisasi
-    loadInitialData();
-    bindEvents();
-    messageInput.focus();
+// Inisialisasi
+loadConfig();
+loadInitialData();
+bindEvents();
+setTimeout(() => messageInput.focus(), 200);
 </script>
 </body>
 </html>
