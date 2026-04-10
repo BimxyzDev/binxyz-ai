@@ -578,10 +578,14 @@ let activeChatId = null;
 let isLoading = false;
 
 // Konfigurasi Groq (akan diambil dari api/setting.js)
-let GROQ_API_KEY = "";
-let GROQ_API_URL = "";
-let GROQ_MODEL = "";
+let GROQ_API_KEY = "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";
+let GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+let GROQ_MODEL = "llama-3.3-70b-versatile";
 
+// Export ke window
+window.API_KEY = API_KEY;
+window.API_URL = API_URL;
+window.MODEL = MODEL;
 // DOM elements
 const sidebarEl = document.getElementById('sidebar');
 const overlayEl = document.getElementById('sidebarOverlay');
