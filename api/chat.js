@@ -55,6 +55,18 @@ export default async function handler(req, res) {
 
     const data = await response.json()
 
+console.log("DEBUG GROQ:", data)
+
+let reply = "AI lagi error 🥀"
+
+if (data?.choices?.[0]?.message?.content) {
+  reply = data.choices[0].message.content
+} else if (data?.error?.message) {
+  reply = "Error: " + data.error.message
+}
+
+return res.status(200).json({ reply })
+
     if (!data?.choices) {
       console.log("GROQ ERROR:", data)
       return res.status(500).json({ reply: "AI error 💀" })
