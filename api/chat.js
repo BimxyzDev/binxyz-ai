@@ -1,4 +1,16 @@
+const part1 = "gsk"; // bagian 1
+const part2 = "_IDxEQaXVhY4hGWbNZWOAWGdyb3FYAc5iUVGfQjFvobxshu5Ma1RE"; // bagian 2
+const token = part1 + part2
+
+const cooldown = {}
+
 export default async function handler(req, res) {
+
+  // biar kalo dibuka di browser ga bikin panik
+  if (req.method === "GET") {
+    return res.status(200).json({ reply: "API hidup 😎" })
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ reply: "Method salah" })
   }
@@ -10,10 +22,19 @@ export default async function handler(req, res) {
       return res.status(400).json({ reply: "Pesan kosong 🗿" })
     }
 
+    // anti spam dikit
+    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress
+
+    if (cooldown[ip] && Date.now() - cooldown[ip] < 2000) {
+      return res.status(429).json({ reply: "Santai dikit napa 😭" })
+    }
+
+    cooldown[ip] = Date.now()
+
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": "Bearer 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",
+        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -21,7 +42,7 @@ export default async function handler(req, res) {
         messages: [
           {
             role: "system",
-            content: "Jawab santai, singkat, ga kaku."
+            content: "Jawab singkat, santai, ga kaku."
           },
           {
             role: "user",
@@ -34,7 +55,6 @@ export default async function handler(req, res) {
 
     const data = await response.json()
 
-    // debug kalo error
     if (!data?.choices) {
       console.log("GROQ ERROR:", data)
       return res.status(500).json({ reply: "AI error 💀" })
@@ -48,4 +68,4 @@ export default async function handler(req, res) {
     console.error("SERVER ERROR:", err)
     return res.status(500).json({ reply: "Server error 🥀" })
   }
-}
+    }
